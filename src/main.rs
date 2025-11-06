@@ -7,20 +7,20 @@ fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
     match args.get(1) {
-        Some(comm) if comm == "add" => {
+        Some(command) if command == "add" => {
             add(args)?;
         }
-        Some(comm) if comm == "remove" => {
+        Some(command) if command == "remove" => {
             remove(args)?;
         }
-        Some(comm) if comm == "clear" => {
+        Some(command) if command == "clear" => {
             clear()?;
         }
-        Some(comm) if comm == "list" => {
+        Some(command) if command == "list" => {
             list()?;
         }
-        Some(comm) => {
-            println!("Unknown command: {comm}");
+        Some(command) => {
+            println!("Unknown command: {command}");
         }
         None => {
             println!(
@@ -38,8 +38,32 @@ fn add(args: Vec<String>) -> io::Result<()> {
         return Ok(());
     };
 
+    if task == "--help" || task == "-h" {
+        println!("Usage: todo add {{task-name}} -p {{project-name}}");
+        return Ok(());
+    }
+
+    let mut project = "default".to_string();
+
+    match args.get(3) {
+        Some(modifier) if modifier == "-p" => {
+            let Some(new_project) = args.get(4) else {
+                let task = if task.contains(" ") {
+                    format!("\"{task}\"")
+                } else {
+                    task.clone()
+                };
+                println!("Usage: todo add {task} -p {{project-name}}");
+                return Ok(());
+            };
+
+            project = new_project.replace(' ', "_");
+        }
+        _ => {}
+    }
+
     let home = env::var("HOME").expect("Failed to get home-directory");
-    let content = match fs::read_to_string(format!("{home}/.todo/list.todo")) {
+    let content = match fs::read_to_string(format!("{home}/.todo/projects/{project}.todo")) {
         Ok(content) => content,
         Err(_) => "".to_string(),
     };
@@ -50,8 +74,8 @@ fn add(args: Vec<String>) -> io::Result<()> {
         format!("{content}\n{task}")
     };
 
-    fs::create_dir_all(format!("{home}/.todo"))?;
-    let mut file = fs::File::create(format!("{home}/.todo/list.todo"))?;
+    fs::create_dir_all(format!("{home}/.todo/projects"))?;
+    let mut file = fs::File::create(format!("{home}/.todo/projects/{project}.todo"))?;
     file.write_all(new_content.as_bytes())?;
 
     Ok(())
