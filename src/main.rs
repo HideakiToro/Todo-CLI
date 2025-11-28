@@ -14,10 +14,10 @@ fn main() -> io::Result<()> {
             remove(args)?;
         }
         Some(command) if command == "clear" => {
-            clear()?;
+            clear(args)?;
         }
         Some(command) if command == "list" => {
-            list()?;
+            list(args)?;
         }
         Some(command) => {
             println!("Unknown command: {command}");
@@ -86,6 +86,35 @@ fn remove(args: Vec<String>) -> io::Result<()> {
         eprintln!("No index given");
         return Ok(());
     };
+
+    if task_index == "--help" || task_index == "-h" {
+        println!("Usage: todo add {{task-name}} -p {{project-name}}");
+        return Ok(());
+    }
+
+    let mut project = "default".to_string();
+
+    match args.get(3) {
+        Some(modifier) if modifier == "-p" => {
+            let Some(new_project) = args.get(4) else {
+                let task_index = if task_index.contains(" ") {
+                    format!("\"{task_index}\"")
+                } else {
+                    task_index.clone()
+                };
+                let Ok(task_index) = task_index.parse::<usize>() else {
+                    eprintln!("Invalid index format");
+                    return Ok(());
+                };
+                println!("Usage: todo remove {task_index} -p {{project-name}}");
+                return Ok(());
+            };
+
+            project = new_project.replace(' ', "_");
+        }
+        _ => {}
+    }
+
     let Ok(task_index) = task_index.parse::<usize>() else {
         eprintln!("Invalid index format");
         return Ok(());
@@ -93,7 +122,7 @@ fn remove(args: Vec<String>) -> io::Result<()> {
     let task_index = task_index - 1;
 
     let home = env::var("HOME").expect("Failed to get home-directory");
-    let content = match fs::read_to_string(format!("{home}/.todo/list.todo")) {
+    let content = match fs::read_to_string(format!("{home}/.todo/projects/{project}.todo")) {
         Ok(content) => content,
         Err(_) => "".to_string(),
     };
@@ -111,22 +140,59 @@ fn remove(args: Vec<String>) -> io::Result<()> {
     lines.remove(task_index);
 
     let new_content = lines.join("\n");
-    let mut file = fs::File::create(format!("{home}/.todo/list.todo"))?;
+    let mut file = fs::File::create(format!("{home}/.todo/projects/{project}.todo"))?;
     file.write_all(new_content.as_bytes())?;
 
     Ok(())
 }
 
-fn clear() -> io::Result<()> {
+fn clear(args: Vec<String>) -> io::Result<()> {
+    let mut project = "default".to_string();
+
+    match args.get(2) {
+        Some(modifier) if modifier == "-p" => {
+            let Some(new_project) = args.get(3) else {
+                println!("Usage: todo clear -p {{project-name}}");
+                return Ok(());
+            };
+
+            project = new_project.replace(' ', "_");
+        }
+        Some(modifier) if modifier == "--help" || modifier == "-h" => {
+            println!("Usage: todo clear -p {{project-name}}");
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let home = env::var("HOME").expect("Failed to get home-directory");
-    fs::remove_file(format!("{home}/.todo/list.todo"))?;
+    fs::remove_file(format!("{home}/.todo/projects/{project}.todo"))?;
     Ok(())
 }
 
-fn list() -> io::Result<()> {
+fn list(args: Vec<String>) -> io::Result<()> {
     let no_tasks_text = "No tasks";
+
+    let mut project = "default".to_string();
+
+    match args.get(2) {
+        Some(modifier) if modifier == "-p" => {
+            let Some(new_project) = args.get(3) else {
+                println!("Usage: todo list -p {{project-name}}");
+                return Ok(());
+            };
+
+            project = new_project.replace(' ', "_");
+        }
+        Some(modifier) if modifier == "--help" || modifier == "-h" => {
+            println!("Usage: todo list -p {{project-name}}");
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let home = env::var("HOME").expect("Failed to get home-directory");
-    let Ok(mut file) = fs::File::open(format!("{home}/.todo/list.todo")) else {
+    let Ok(mut file) = fs::File::open(format!("{home}/.todo/projects/{project}.todo")) else {
         println!("{no_tasks_text}");
         return Ok(());
     };
