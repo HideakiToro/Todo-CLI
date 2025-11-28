@@ -19,6 +19,9 @@ fn main() -> io::Result<()> {
         Some(command) if command == "list" => {
             list(args)?;
         }
+        Some(command) if command == "projects" => {
+            projects(args)?;
+        }
         Some(command) => {
             println!("Unknown command: {command}");
         }
@@ -34,7 +37,7 @@ fn main() -> io::Result<()> {
 
 fn add(args: Vec<String>) -> io::Result<()> {
     let Some(task) = args.get(2) else {
-        eprintln!("No task name given");
+        eprintln!("No task-name given");
         return Ok(());
     };
 
@@ -212,4 +215,73 @@ fn list(args: Vec<String>) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+fn projects(args: Vec<String>) -> io::Result<()> {
+    match args.get(2) {
+        Some(command) if command == "list" => {
+            projects_list(args)?;
+        }
+        Some(command) if command == "clear" => {
+            projects_clear(args)?;
+        }
+        Some(command) if command == "remove" => {
+            projects_remove(args)?;
+        }
+        _ => {
+            println!("Usage: todo projects {{command}} {{project-name}} {{modifiers}}");
+        }
+    }
+    return Ok(());
+}
+
+fn projects_list(_args: Vec<String>) -> io::Result<()> {
+    let no_projects_text = "No projects";
+
+    let home = env::var("HOME").expect("Failed to get home-directory");
+    let Ok(mut dirs) = fs::read_dir(format!("{home}/.todo/projects")) else {
+        println!("{no_projects_text}");
+        return Ok(());
+    };
+
+    println!("Tasks:\n");
+    while let Some(dir) = dirs.next()
+        && let Ok(dir) = dir
+    {
+        let file_name = dir.file_name();
+        let Some(string) = file_name.to_str() else {
+            eprintln!("Failed to read project-name");
+            return Ok(());
+        };
+        let mut string = string.to_string();
+        if string.ends_with(".todo") {
+            for _ in 0..5 {
+                string.pop();
+            }
+            println!("{}", string);
+        }
+    }
+    return Ok(());
+}
+
+fn projects_clear(_args: Vec<String>) -> io::Result<()> {
+    let home = env::var("HOME").expect("Failed to get home-directory");
+
+    fs::remove_dir_all(format!("{home}/.todo/projects")).expect("Failed to clear projects");
+    return Ok(());
+}
+
+fn projects_remove(mut args: Vec<String>) -> io::Result<()> {
+    // Remove "todo projects remove" so that project-name is at index 0
+    for _ in 0..3 {
+        args.remove(0);
+    }
+
+    let mut new_args = vec!["todo".into(), "clear".into(), "-p".into()];
+    for arg in args {
+        new_args.push(arg);
+    }
+
+    clear(new_args)?;
+    return Ok(());
 }
