@@ -27,7 +27,7 @@ fn main() -> io::Result<()> {
         }
         None => {
             println!(
-                "Usage: todo {{command}} {{task-name}} {{modifiers}}\n\nAvailable commands:\n\nadd\nremove\nlist\nclear"
+                "Usage: todo {{command}} {{task-name}} {{modifiers}}\n\nAvailable commands:\n\nadd\nremove\nlist\nclear\nprojects"
             );
         }
     }
@@ -233,7 +233,9 @@ fn projects(args: Vec<String>) -> io::Result<()> {
             projects_remove(args)?;
         }
         _ => {
-            println!("Usage: todo projects {{command}} {{project-name}} {{modifiers}}");
+            println!(
+                "Usage: todo projects {{command}} {{project-name}} {{modifiers}}\n\nAvailable commands:\n\nremove\nlist\nclear"
+            );
         }
     }
     return Ok(());
