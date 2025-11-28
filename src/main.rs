@@ -146,6 +146,10 @@ fn remove(args: Vec<String>) -> io::Result<()> {
     let mut file = fs::File::create(format!("{home}/.todo/projects/{project}.todo"))?;
     file.write_all(new_content.as_bytes())?;
 
+    if lines.is_empty() {
+        clear(vec!["todo".into(), "clear".into(), "-p".into(), project])?;
+    }
+
     Ok(())
 }
 
@@ -244,22 +248,32 @@ fn projects_list(_args: Vec<String>) -> io::Result<()> {
         return Ok(());
     };
 
-    println!("Tasks:\n");
+    let mut projects = Vec::new();
     while let Some(dir) = dirs.next()
         && let Ok(dir) = dir
     {
         let file_name = dir.file_name();
-        let Some(string) = file_name.to_str() else {
+        let Some(project_name) = file_name.to_str() else {
             eprintln!("Failed to read project-name");
             return Ok(());
         };
-        let mut string = string.to_string();
-        if string.ends_with(".todo") {
+        let mut project = project_name.to_string();
+        if project.ends_with(".todo") && project != "default.todo".to_string() {
             for _ in 0..5 {
-                string.pop();
+                project.pop();
             }
-            println!("{}", string);
+            projects.push(project);
         }
+    }
+
+    if projects.is_empty() {
+        println!("{no_projects_text}");
+        return Ok(());
+    }
+
+    println!("Projects:\n");
+    for project in projects {
+        println!("{}", project);
     }
     return Ok(());
 }
